@@ -6,4 +6,4 @@ app = FastAPI()
 def hello():
     return 'Hello World'
 
-print()
+print('Hello world')

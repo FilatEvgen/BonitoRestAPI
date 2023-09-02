@@ -1,25 +1,49 @@
 from fastapi import FastAPI
-
+from typing import List, Optional
+from pydantic import Field,BaseModel
+from enum import Enum
+from datetime import datetime
 app = FastAPI()
 
-@app.get('/')
-def hello():
-    return 'Hello World'
-
-print('Hello world')
-
+# @app.get('/')
+# def hello():
+#     return 'Hello World'
+#
+# print('Hello world')
+#
 app = FastAPI(
         title='Trading APP'
 )
+
+
+
 # база данных(массив из строк)
 fake_users = [
     {'id': 1, 'role': 'admin','name':'Bob'},
     {'id': 2, 'role': 'Investor','name':'John'},
     {'id': 3, 'role': 'trader','name':'Matt'},
+    {'id': 4, 'role': 'Investor','name':'Homer','degree': [
+        {'id': 1,'created_at': '2023-09-02T00:00:00','type_degree':'expert'}
+    ]},
 ]
 
+class DegreeType (Enum):
+    newbie = 'newbie'
+    expert = 'expert'
+
+
+class Degree(BaseModel):
+    id: int
+    created_at: datetime
+    type_degree:DegreeType
+
+class User(BaseModel):
+    id:int
+    role: str
+    name:str
+    degree:Optional[List[Degree]] = []
 # Получения данных о конкретном пользователе(параметры пути)
-@app.get('/users/{user_id}')
+@app.get('/users/{user_id}',response_model=List[User])
 def get_user(user_id: int):
     return [user for user in fake_users if user.get('id')==user_id]
 
@@ -28,24 +52,18 @@ fake_trades = [
     {'id':1,'user_id':1,'currency': 'BTC','side':'buy','price':123,'amount':2.12},
     {'id':2,'user_id':1,'currency': 'BTC','side':'sell','price':125,'amount':2.12},
 ]
-# Лимиторванные параметры запроса(ограничен список сделок)
-@app.get('/traders')
-def get_traders(limit: int= 1,offset: int=0):
-    return fake_trades[offset:][:limit]
+# Валидация данных которые нам отправляет пользователь( в строке Price мы выдаем ошибку если число отрицательное)
+class Trade(BaseModel):
+    id: int
+    user_id: int
+    currency: str
+    side: str
+    price: float = Field(ge=0)
+    amount: float
 
-# комбинирование запросов
-# бд
-fake_users2 = [
-    {'id': 1, 'role': 'admin','name':'Bob'},
-    {'id': 2, 'role': 'Investor','name':'John'},
-    {'id': 3, 'role': 'trader','name':'Matt'},
-]
 
-#запрос пользователя на смену имени и ответ ему
-@app.post('/users/{user_id}')
-def change_user_name(user_id: int, new_name: str):
-    current_user = list(filter(lambda user: user.get('id')==user_id, fake_users2))[0]
-    current_user['name']= new_name
-    return {'status':200,'data': current_user}
-
+@app.post('/trades')
+def add_trades(trades: List[Trade]):
+    fake_trades.extend(trades)
+    return {'status': 200, 'data': fake_trades}
 

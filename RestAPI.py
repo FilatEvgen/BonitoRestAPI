@@ -1,69 +1,69 @@
-from fastapi import FastAPI
-from typing import List, Optional
-from pydantic import Field,BaseModel
-from enum import Enum
-from datetime import datetime
-app = FastAPI()
+import re
+import sqlalchemy as db
+from sqlalchemy import create_engine, Column, Integer, Text
+from fastapi import FastAPI, HTTPException
+from pydantic import ValidationError, BaseModel, EmailStr, validator
 
-# @app.get('/')
-# def hello():
-#     return 'Hello World'
-#
-# print('Hello world')
-#
-app = FastAPI(
-        title='Trading APP'
-)
+app = FastAPI(title='users')
 
+# Создание соединения с базой данных
+engine = create_engine('postgresql://postgres:89080620743@localhost:5432/postgres')
+connection = engine.connect()
 
+metadata = db.MetaData()
 
-# база данных(массив из строк)
-fake_users = [
-    {'id': 1, 'role': 'admin','name':'Bob'},
-    {'id': 2, 'role': 'Investor','name':'John'},
-    {'id': 3, 'role': 'trader','name':'Matt'},
-    {'id': 4, 'role': 'Investor','name':'Homer','degree': [
-        {'id': 1,'created_at': '2023-09-02T00:00:00','type_degree':'expert'}
-    ]},
-]
+# Создание таблицы
+users = db.Table('users', metadata,
+    db.Column('user_id', db.Integer, primary_key=True),
+    db.Column('user_name', db.Text),
+    db.Column('password', db.Text),
+    db.Column('email', db.Text)
+    )
+# создание таблицы в базе данных
+metadata.create_all(engine)
 
-class DegreeType (Enum):
-    newbie = 'newbie'
-    expert = 'expert'
+class UserCreate(BaseModel):
+    user_name: str
+    password: str
+    email: EmailStr
 
+    @validator('user_name')
+    def validate_user_name(cls, value):
+        if len(value) < 3:
+            raise ValueError('Имя пользователя должно содержать не менее 3 символов')
+        return value
 
-class Degree(BaseModel):
-    id: int
-    created_at: datetime
-    type_degree:DegreeType
+    @validator('password')
+    def validate_password(cls, value):
+        if len(value) < 5:
+            raise ValueError('Пароль должен содержать не менее 5 символов')
+        if not any(char.isdigit() for char in value):
+            raise ValueError('Пароль должен содержать хотя бы одну цифру')
+        if not any(char.isupper() for char in value):
+            raise ValueError('Пароль должен содержать хотя бы одну заглавную букву')
+        return value
 
-class User(BaseModel):
-    id:int
-    role: str
-    name:str
-    degree:Optional[List[Degree]] = []
-# Получения данных о конкретном пользователе(параметры пути)
-@app.get('/users/{user_id}',response_model=List[User])
-def get_user(user_id: int):
-    return [user for user in fake_users if user.get('id')==user_id]
+    @validator('email')
+    def validate_email(cls, value):
+        email_regex = re.compile(r'^[\w\.-]+@[\w\.-]+\.\w+$')
+        if not email_regex.match(value):
+            raise ValueError('Некорректный адрес электронной почты')
+        return value
 
-# БД
-fake_trades = [
-    {'id':1,'user_id':1,'currency': 'BTC','side':'buy','price':123,'amount':2.12},
-    {'id':2,'user_id':1,'currency': 'BTC','side':'sell','price':125,'amount':2.12},
-]
-# Валидация данных которые нам отправляет пользователь( в строке Price мы выдаем ошибку если число отрицательное)
-class Trade(BaseModel):
-    id: int
-    user_id: int
-    currency: str
-    side: str
-    price: float = Field(ge=0)
-    amount: float
+@app.post('/users')
+def create_user(user_create: UserCreate):
+    # Проверка валидности данных
+    try:
+        user_create.validate(user_create.dict())
+    except ValidationError as e:
+        raise HTTPException(status_code=400, detail=str(e.errors()))
 
+    # Вставка данных в таблицу
+    insert_query = users.insert().values(user_name=user_create.user_name, password=user_create.password, email=user_create.email)
+    connection.execute(insert_query)
 
-@app.post('/trades')
-def add_trades(trades: List[Trade]):
-    fake_trades.extend(trades)
-    return {'status': 200, 'data': fake_trades}
+    return {'status': 200, 'success': True}
 
+@app.exception_handler(ValidationError)
+async def validation_exception_handler(request, exc):
+    raise HTTPException(status_code=400, detail=str(exc.errors()))

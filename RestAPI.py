@@ -1,17 +1,11 @@
 import re
-import sqlalchemy as db
-from sqlalchemy import create_engine, Column, Integer, String
-from fastapi import FastAPI, HTTPException
-from pydantic import ValidationError, BaseModel, EmailStr, validator
 from typing import Optional, List
-from sqlalchemy.orm import Session, sessionmaker, declarative_base
-from fastapi import Depends
-from sqlalchemy import select
-from pydantic import HttpUrl
-from local.tables import tables
+
+from api.models.apimodels import UserCreate, ClothesCreate, ShoesCreate, HatsCreate, ShoesOut, ClothesOut, HatsOut
+from fastapi import FastAPI, HTTPException
 from local.repositories import dbrepository
-from api.routes import apiroutes
-from api.models.apimodels import UserCreate,ClothesCreate,ShoesCreate,HatsCreate, ShoesOut,ClothesOut,HatsOut
+from pydantic import ValidationError, validator
+
 app = FastAPI(title='users')
 # Валидация данных(проверка на корректность ввода)
 @validator('user_name')
@@ -54,16 +48,14 @@ def validate_shoe_size(cls, value):
 def create_user(user_create: UserCreate):
     return dbrepository.insert_user(user_create)
 @app.post("/clothes")
-async def create_clothes(clothes_create:ClothesCreate):
+def create_clothes(clothes_create:ClothesCreate):
     return dbrepository.insert_clothes(clothes_create)
 @app.post("/shoes")
-async def create_shoes(shoes_create: ShoesCreate):
-    responce = await dbrepository.insert_shoes(shoes_create)
-    return jsonable_encoder(response)
+def create_shoes(shoes_create: ShoesCreate):
+    return dbrepository.insert_shoes(shoes_create)
 @app.post("/hats")
-async def create_hats(hats_create:HatsCreate):
-    responce = await dbrepository.insert_hats(hats_create)
-    return jsonable_encoder(response)
+def create_hats(hats_create:HatsCreate):
+    return dbrepository.insert_hats(hats_create)
 
 # Получение списка пользователей из базы данных
 @app.get('/users', response_model=List[UserCreate])
@@ -72,21 +64,18 @@ def get_users(skip: int = 0, limit: int = 10):
 
 # Получение списка одежды из базы данных
 @app.get('/clothes', response_model=List[ClothesOut])
-async def get_clothes(size: Optional[str] = None):
-    responce = await dbrepository.get_cloth(create_clothes)
-    return jsonable_encoder(response)
+def get_clothes(size: Optional[str] = None):
+    return dbrepository.get_cloth(size)
 
 # Получение списка обуви из базы данных
 @app.get('/shoes', response_model=List[ShoesOut])
 async def get_shoes(size: Optional[int] = None):
-    responce = await dbrepository.get_shoe(create_shoes)
-    return jsonable_encoder(response)
+    return dbrepository.get_shoe(size)
 
 # Получение списка головных уборов из базы данных
 @app.get('/hats', response_model=List[HatsOut])
 async def get_hats():
-    responce = await dbrepository.get_hat(create_hats)
-    return jsonable_encoder(response)
+    return dbrepository.get_hat()
 
 
 # Обработчик ошибок валидации данных

@@ -1,6 +1,7 @@
-from sqlalchemy.orm import  declarative_base
 import sqlalchemy as db
-from sqlalchemy import create_engine, Column, Integer, String
+from sqlalchemy import Integer
+from sqlalchemy.orm import declarative_base
+
 Base = declarative_base()
 # cоздание таблиц вещей
 class Clothes(Base):

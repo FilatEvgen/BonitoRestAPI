@@ -1,22 +1,21 @@
-import sqlalchemy as db,select
-from sqlalchemy.orm import Session, sessionmaker, declarative_base
-from typing import Optional, List
-from fastapi import Depends
-from local.tables.tables import User,Clothes,Shoes,Hats
-from sqlalchemy import create_engine
-from api.models.apimodels import UserCreate,ClothesCreate,ShoesCreate,HatsCreate, ShoesOut,ClothesOut,HatsOut
 from contextlib import contextmanager
+from typing import Optional
 
+import sqlalchemy as db
+from api.models.apimodels import UserCreate, ClothesCreate, ShoesCreate, HatsCreate
+from local.tables.tables import User, Clothes, Shoes, Hats
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, declarative_base
 
 engine = create_engine('postgresql://postgres:89080620743@localhost:5432/postgres')
 connection = engine.connect()
 metadata = db.MetaData()
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-SessionLocal = Session()
 Base = declarative_base()
 Base.metadata.create_all(engine)
 
 # Получение данных с помощью FastAPI
+@contextmanager
 def get_db():
     db = SessionLocal()
     try:
@@ -49,54 +48,36 @@ def insert_shoes(shoes_create: ShoesCreate):
     return shoes_create
 #Добавление в БД головных уборов
 def insert_hats(hats_create: HatsCreate):
-    insert_query = Hats.__table__.insert().values(name=hats_create.name, size=hats_create.size, image_url=hats_create.image_url)
+    insert_query = Hats.__table__.insert().values(name=hats_create.name,  image_url=hats_create.image_url)
     connection.execute(insert_query)
     connection.commit()
     return hats_create
 # Получение списка пользователей из базы данных
 def get_user(skip: int = 0, limit: int = 10):
-    result = SessionLocal.query(User).all()
-    SessionLocal.close()
-    return   result.index(0)
-    # insert_query = User.__table__.
-    # db: Session = Depends(get_db)
-    # result = db.query(User).offset(skip).limit(limit).all()
-    # user_list = [UserCreate(user_name=user[1], password=user[2], email=user[3]) for user in result]
-    # return user_list
+    with get_db() as db:
+        result = db.query(User).offset(skip).limit(limit).all()
+    return result
+
 # Получение списка одежды из базы данных
 def get_cloth(size: Optional[str] = None):
-    db: Session = Depends(get_db)
-    if size:
-        clothes = db.query(Clothes).filter(Clothes.size == size).all()
-    else:
-        clothes = db.query(Clothes).all()
-    return clothes
+    with get_db() as db:
+        if size:
+            clothes = db.query(Clothes).filter(Clothes.size == size).all()
+        else:
+            clothes = db.query(Clothes).all()
+        return clothes
 
 # Получение списка обуви из базы данных
 def get_shoe(size: Optional[int] = None):
-    db: Session = Depends(get_db)
-    if size:
-        shoes = db.query(Shoes).filter(Shoes.size == size).all()
-    else:
-        shoes = db.query(Shoes).all()
-    return shoes
+    with get_db()as db:
+        if size:
+            shoes = db.query(Shoes).filter(Shoes.size == size).all()
+        else:
+            shoes = db.query(Shoes).all()
+        return shoes
 
 # Получение списка головных уборов из базы данных
 def get_hat():
-    db: Session = Depends(get_db)
-    hats = db.query(Hats).all()
-    return hats
-# Проверка работы сессии базы данных
-# def check_db_session():
-#     db = SessionLocal()
-#     try:
-#         result = db.execute(select(1))
-#         print(f"Результат проверки сессии БД: {result.scalar()}")
-#         if result.scalar() == 1:
-#             print("Сессия БД работает исправно.")
-#         else:
-#             print("Могут быть проблемы с сессией БД.")
-#     except Exception as e:
-#         print(f"Ошибка при проверке сессии БД: {str(e)}")
-#     finally:
-#         db.close()
+    with get_db() as db:
+        hats = db.query(Hats).all()
+        return hats

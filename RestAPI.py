@@ -1,16 +1,12 @@
 import re
 from typing import Optional, List
-
-from api.models.apimodels import UserCreate, ClothesCreate, ShoesCreate, HatsCreate, ShoesOut, ClothesOut, HatsOut
+from api.models.apimodels import UserCreate, ClothesCreate, ShoesCreate, HatsCreate, ShoesOut, ClothesOut, HatsOut,Category
 from fastapi import FastAPI, HTTPException
 from local.repositories import dbrepository
 from pydantic import ValidationError, validator, BaseModel
 from typing import List, Union
 app = FastAPI(title='users')
-# Определение модели данных(класс в котором будет хранится информация о категориях и товарах внутри этой категории)
-class Category(BaseModel):
-    category: str
-    products: List[Union[ClothesOut, ShoesOut, HatsOut]]
+
 # Эндпоинт(@) который возвращает список категорий с товаром
 @app.get('/categories', response_model=List[Category])
 def get_categories(size:Optional[int]=None):

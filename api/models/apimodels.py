@@ -1,4 +1,5 @@
 from pydantic import  BaseModel
+from typing import List, Union
 #Создание схемы для отправки данных с помощью POST-запроса
 class ClothesCreate(BaseModel):
     name: str
@@ -37,3 +38,8 @@ class HatsOut(BaseModel):
         id: int
         name: str
         image_url: str
+
+# Определение модели данных(класс в котором будет хранится информация о категориях и товарах внутри этой категории)
+class Category(BaseModel):
+    category: str
+    products: List[Union[ClothesOut, ShoesOut, HatsOut]]

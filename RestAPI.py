@@ -4,9 +4,27 @@ from typing import Optional, List
 from api.models.apimodels import UserCreate, ClothesCreate, ShoesCreate, HatsCreate, ShoesOut, ClothesOut, HatsOut
 from fastapi import FastAPI, HTTPException
 from local.repositories import dbrepository
-from pydantic import ValidationError, validator
-
+from pydantic import ValidationError, validator, BaseModel
+from typing import List, Union
 app = FastAPI(title='users')
+# Определение модели данных(класс в котором будет хранится информация о категориях и товарах внутри этой категории)
+class Category(BaseModel):
+    category: str
+    products: List[Union[ClothesOut, ShoesOut, HatsOut]]
+# Эндпоинт(@) который возвращает список категорий с товаром
+@app.get('/categories', response_model=List[Category])
+def get_categories(size:Optional[int]=None):
+    categories = []
+
+    clothes = dbrepository.get_cloth(size=None if size is None else str(size))
+    shoes = dbrepository.get_shoe(size)
+    hats = dbrepository.get_hat()
+
+    categories.append({'category': 'clothes', 'products': clothes})
+    categories.append({"category": "shoes", "products": shoes})
+    categories.append({"category": "hats", "products": hats})
+
+    return categories
 # Валидация данных(проверка на корректность ввода)
 @validator('user_name')
 def validate_user_name(cls, value):
